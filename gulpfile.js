@@ -1,13 +1,13 @@
 const gulp = require('gulp'),
   sass = require('gulp-sass')(require('sass')),
-  clean = require('gulp-clean-dir'),
+  clean = require('gulp-clean'),
   browserSync = require('browser-sync').create(),
   concat = require('gulp-concat'),
   autoprefixer = require('autoprefixer'),
   postcss = require('gulp-postcss'),
   sourcemaps = require('gulp-sourcemaps')
 
-gulp.task('clear', () => gulp.src('./dist/').pipe(clean('./dist')).pipe(gulp.dest('./dist')))
+gulp.task('clear', ()=> gulp.src('./dist', {read: false, allowEmpty: true}).pipe(clean()))
 
 gulp.task('html', () => {
   return gulp.src(['./src/**/*.html'], {
@@ -37,9 +37,23 @@ gulp.task('js', () => {
     .pipe(browserSync.stream());
 });
 
-gulp.task('build', gulp.series('clear', 'html', 'sass', 'js'));
+gulp.task('copyAssets', () => {
+  return gulp
+    .src(['./src/assets/**/*', '!./src/assets/{js,css}/**'], {nodir: true})
+    .pipe(gulp.dest('./dist/assets'))
+});
 
-gulp.task('dev', gulp.series('clear', 'html', 'sass', 'js'));
+gulp.task('copyFavicon', () => {
+  return gulp
+    .src('./src/favicon.ico', {nodir: true})
+    .pipe(gulp.dest('./dist/'))
+});
+
+gulp.task('assets', gulp.series('copyAssets', 'copyFavicon'));
+
+gulp.task('build', gulp.series('clear', 'html', 'sass', 'js', 'assets'));
+
+gulp.task('dev', gulp.series('html', 'sass', 'js', 'assets'));
 
 gulp.task('serve', () => {
   return browserSync.init({
@@ -51,15 +65,15 @@ gulp.task('serve', () => {
   });
 });
 
-
 gulp.task('watch', () => {
   
   const watch = [
     './src/**/*.html',
     './src/assets/css/**/*.{css,scss}',
-    './src/assets/js/**/*.js'
+    './src/assets/js/**/*.js',
   ];
   
+  gulp.watch(['./src/assets/**/*', '!./src/assets/{js,css}/**'], gulp.series('assets')).on('change', browserSync.reload);
   gulp.watch(watch, gulp.series('dev')).on('change', browserSync.reload);
 });
 
